@@ -1,6 +1,6 @@
-#ifndef ASM_MARCO_H
+#ifndef __ASM_MARCO_H
 
-#define ASM_MARCO_H
+#define __ASM_MARCO_H
 
 #define copy_stack(des)\
     __asm__ __volatile__(\
