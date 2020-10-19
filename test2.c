@@ -44,7 +44,7 @@ int main(){
     u8 s[] = "main's stack";
     u64 rsp, rbp;
     get_reg(rsp, rsp);
-    get_rbp(rbp);
+    get_reg(rbp, rbp);
     u64 stack_size = rbp - rsp;
 
     u8 *temp = stack_base - stack_size;
@@ -58,7 +58,7 @@ int main(){
     for(int i = 0; i < stack_size; i++) printf("%02x ", *(stack_base - stack_size + i));
     putchar('\n');
     
-    set_rbp(stack_base);
+    set_reg(rbp, stack_base);
     mv_sb_rsp(stack_size);
 
     *(u64*)(stack_base + 8) = f_addr;

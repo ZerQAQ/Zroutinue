@@ -11,9 +11,9 @@
     u8 *data;
 } __Channel; */
 
-#ifndef CHANnEL_H
+#ifndef CHANNEL_H
 
-#define CHANnEL_H
+#define CHANNEL_H
 
 __Channel channel_init(u64 num, u64 data_size, ...){
     //处理参数

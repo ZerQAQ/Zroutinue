@@ -15,13 +15,17 @@ typedef struct __list_node {
 //flag第一位表示是否已经运行过
 typedef struct {
     u8 *stack;
-    u64 addr, stack_size, rbp, flag;
+    u64 addr, stack_size, rbp, flag, id;
+    __ListNode *node_ptr;
+    u64 *args, arg_num;
 } __Context;
 
 typedef struct{
     u64 routinue_num, routinue_cap, running;
     __Context **routinue_ctxs;
     __ListNode *ready, *waiting;
+
+    u8 *rbp, *rsp, *routinue_stack, *routinue_s_base;
 } __Scheduler;
 
 typedef struct{
