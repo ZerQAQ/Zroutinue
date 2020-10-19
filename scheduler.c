@@ -9,19 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/* typedef struct{
-    u64 routinue_num, routinue_cap, running;
-    __Context **routinue_ctxs;
-    __ListNode *ready, *waiting;
-
-    u8 *rbp, *rsp, *stack;
-} __Scheduler; */
-
-/* typedef struct {
-    u8 *stack;
-    u64 addr, stack_size, rbp, flag;
-} __Context; */
-
 #define __EXIT\
     set_reg(rsp, main_rsp);\
     set_reg(rbp, main_rbp);\
@@ -33,12 +20,18 @@ void __sch_init(){
     __S_zerqaq.routinue_num = 0;
     __S_zerqaq.routinue_cap = init_routinue_num;
     __S_zerqaq.routinue_ctxs = malloc(sizeof(void*) * init_routinue_num);
+    if(__S_zerqaq.routinue_ctxs == 0x0) perror("malloc error");
 
     list_init(__S_zerqaq.ready);
+    if(__S_zerqaq.ready == 0x0) perror("malloc error");
     list_init(__S_zerqaq.waiting);
+    if(__S_zerqaq.waiting == 0x0) perror("malloc error");
 
     __S_zerqaq.routinue_stack = malloc(routinue_stack_size);
-    __S_zerqaq.routinue_s_base = (u64)(__S_zerqaq.routinue_stack + routinue_stack_size) & 0xfffffffffffff000UL - 0x2000;
+    if(__S_zerqaq.routinue_stack == 0x0) perror("malloc error");
+    __S_zerqaq.routinue_s_base = ((u64)(__S_zerqaq.routinue_stack + routinue_stack_size) & 0xfffffffffffff000UL) - 0x2000;
+    printf("stack is between %p ~ %p", __S_zerqaq.routinue_stack, __S_zerqaq.routinue_stack + routinue_stack_size);
+    puts("");
 }
 
 #define __go(...) var_args_func(__go_raw, __VA_ARGS__)
@@ -142,22 +135,26 @@ void __sch_recover(__Context *ctx);
 void __sch_scheduler(){
     //printf("%d\n", list_is_empty(__S_zerqaq.ready));
     //检查链表是否为空
-    if (list_is_empty(__S_zerqaq.ready)){
+    /* if (list_is_empty(__S_zerqaq.ready)){
         if(list_is_empty(__S_zerqaq.waiting)){
             printf("program end.\n");
         } else{
             printf("dead lock!\n");
         }
         __EXIT;
-    }
+    } */
 
     //取ready队列中的第一个协程运行
     __ListNode *node = __S_zerqaq.ready->next;
+    if(node->val != 1) {printf("sch:bad node memory\n"); puts(""); __EXIT}
+
     __Context *ctx = __S_zerqaq.routinue_ctxs[node->val];
+    if(ctx->id != 1) {printf("sch:bad ctx memory\n"); puts(""); __EXIT}
     
     __S_zerqaq.running = node->val;
     //list_del(node);
     //printf("%d\n", list_is_empty(__S_zerqaq.ready));
+    puts("sch: recover or start jmp");
     if (ctx->flag & 1) __sch_recover(ctx);
     else __sch_start(ctx);
 }
@@ -168,21 +165,28 @@ void __sch_save_ctx(){
     __Context *ctx = __S_zerqaq.routinue_ctxs[__S_zerqaq.running];
     u8 *rsp; get_reg(rsp, rsp);
     u64 stack_size = ctx->rbp - rsp;
-    ctx->stack = malloc(stack_size);
-    puts("in s_sctx:");
-    printf("rsp:%p ctx->rbp:%p\n", rsp, ctx->rbp);
 
-    /* for(int i = 0; i < stack_size; i++){
-        printf("%x ", *(rsp + i));
+    puts("in s_sctx:");
+    printf("rsp:%p ctx->rbp:%p size: %llx\n", rsp, ctx->rbp, stack_size);
+    if(ctx->stack_size < stack_size){
+        if(ctx->stack_size != 0) free(ctx->stack);
+        puts("s_sctx:mallocing");
+        ctx->stack = malloc(stack_size);
+        if(ctx->stack == 0) perror("malloc error");
+    }
+    puts("s_sctx:copying stack");
+
+    for(int i = 0; i < stack_size; i++){
+        //printf("%x ", *(rsp + i));
         ctx->stack[i] = rsp[i];
-    } putchar('\n'); */
+    } //putchar('\n'); 
 
     //memcpy(ctx->stack, rsp, ctx->stack_size);
 
     for(int i = 0; i < stack_size; i++) {
         printf("%x ", ctx->stack[i]);
     }
-    putchar('\n');
+    puts("");
 
     //把协程切换到到调度器的等待队列 TODO:改成waiting
     //__ListNode *node = ctx->node_ptr;
@@ -195,8 +199,9 @@ void __sch_save_ctx(){
         :"=r"(ctx->addr)
     );
 
-    __EXIT;
+    //__EXIT;
     //进入调度器
+    printf("save_ctx jmp\n");
     __jmp_to_sch;
 
     return;

@@ -9,6 +9,7 @@
         "subq %%rsp, %%rcx\n\t"\
         "rep movsb"\
         ::"D"(des)\
+        :"memory"\
     );
 
 #define get_reg(reg, des)\
@@ -17,12 +18,14 @@
         #reg\
         " , %0"\
         :"=r"(des)\
+        ::"memory"\
     );
 
 #define get_rsp(des)\
     __asm__ __volatile__(\
         "movq %%rsp, %0"\
         :"=r"(des)\
+        ::"memory"\
     );
 
 #define set_reg(reg, val)\

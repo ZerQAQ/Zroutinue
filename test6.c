@@ -65,7 +65,9 @@ void entry(){
     for(u64 i = 0; i < (rbp - rsp); i++){
         printf("%x ", *(rsp + i));
     } putchar('\n');
+
     printf("hello!\n");
+
     __sch_save_ctx();
     printf("hello!\n");
     //__sch_save_ctx();
