@@ -14,11 +14,17 @@ typedef struct __list_node {
 
 //flag第一位表示是否已经运行过
 typedef struct {
-    u8 *stack;
-    u64 addr, stack_size, rbp, flag, id;
+    u8 *stack, *rbp;
+    u64 addr, stack_size, flag, id;
     __ListNode *node_ptr;
     u64 *args, arg_num;
 } __Context;
+
+#define __free_context(ctx)\
+    if(ctx->stack_size > 0) free(ctx->stack);\
+    free(ctx->node_ptr);\
+    if(ctx->arg_num > 0) free(ctx->args);\
+    free(ctx);
 
 typedef struct{
     u64 routinue_num, routinue_cap, running;

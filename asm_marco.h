@@ -52,4 +52,10 @@
         ":"\
     );
 
+#define get_rip(des)\
+    __asm__ __volatile__ (\
+        "leaq (%%rip), %0\n\t"\
+        :"=r"(des)\
+    );
+
 #endif

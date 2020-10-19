@@ -8,23 +8,27 @@
     o->next = o->prev = o;
 
 //  (o->prev)<->(o)
-// (o->prev)<->temp<->(o)
+// (o->prev)<->node<->(o)
 
-#define list_add(o, _val, temp)\
-    __ListNode *temp = (__ListNode*) malloc(sizeof(__ListNode));\
-    temp->val = _val;\
-    o->prev->next = temp;\
-    temp->prev = o->prev;\
-    temp->next = o;\
-    o->prev = temp;
+//添加到列表中
+void list_add(__ListNode *head, __ListNode *node){
+    __ListNode *p = head->prev;
+    p->next = node;
+    node->prev = p;
+    node->next = head;
+    head->prev = node;
+}
 
-//不能删除头节点
-#define list_del(o)\
-    o->prev->next = o->next\
-    o->next->prev = o->prev;\
-    free(o);
+//从列表中删除 不free
+void list_del(__ListNode *node){
+    node->prev->next = node->next;
+    node->next->prev = node->prev;
+}
 
 #define list_head(o)\
     (o->next)
+
+#define list_is_empty(head)\
+    (head->next == head)
 
 #endif
