@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <string.h>
 
+extern u64 main_rsp, main_rbp;
+
 #define __EXIT\
     set_reg(rsp, main_rsp);\
     set_reg(rbp, main_rbp);\
@@ -29,8 +31,11 @@ void __sch_init(){
 
     __S_zerqaq.routinue_stack = malloc(routinue_stack_size);
     if(__S_zerqaq.routinue_stack == 0x0) perror("malloc error");
-    __S_zerqaq.routinue_s_base = ((u64)(__S_zerqaq.routinue_stack + routinue_stack_size) & 0xfffffffffffff000UL) - 0x2000;
-    printf("stack is between %p ~ %p", __S_zerqaq.routinue_stack, __S_zerqaq.routinue_stack + routinue_stack_size);
+    __S_zerqaq.routinue_s_base = ((u64)(__S_zerqaq.routinue_stack +  routinue_stack_size) & 0xfffffffffffff000UL) - 0x2000;
+    
+    u64 temp1 = (u64)__S_zerqaq.routinue_stack;
+    u64 temp2 = temp1 + routinue_stack_size;
+    printf("stack is between %llx ~ %llx", temp1, temp2);
     puts("");
 }
 
@@ -53,7 +58,7 @@ __Context* __go_raw(u64 arg_num, void* func_ptr, ...){
     c->stack_size = 0;
     c->stack = NULL;
     c->flag = 0;
-    c->rbp = NULL;
+    c->stack_base = NULL;
 
     c->arg_num = arg_num - 1;
     if(c->arg_num > 0) c->args = malloc(c->arg_num * sizeof(u64));
@@ -82,7 +87,7 @@ void __sch_start(__Context *ctx){
     if (ctx->arg_num > 6) rsp += (ctx->arg_num - 6) * 8;
 
     //保存栈底
-    ctx->rbp = rsp;
+    ctx->stack_base = rsp;
     printf("in sch_start: bef_p_arg_rsp:%llx\n", rsp);
 
     //恢复参数上下文，六个以上的参数放在栈中
@@ -164,16 +169,20 @@ void __sch_save_ctx(){
     //保存栈
     __Context *ctx = __S_zerqaq.routinue_ctxs[__S_zerqaq.running];
     u8 *rsp; get_reg(rsp, rsp);
-    u64 stack_size = ctx->rbp - rsp;
+    get_reg(rbp, ctx->rbp);
+    u64 stack_size = ctx->stack_base - rsp;
 
     puts("in s_sctx:");
-    printf("rsp:%p ctx->rbp:%p size: %llx\n", rsp, ctx->rbp, stack_size);
+    printf("rsp:%p ctx->rbp:%p size: %llx\n", rsp, ctx->stack_base, stack_size);
     if(ctx->stack_size < stack_size){
         if(ctx->stack_size != 0) free(ctx->stack);
-        puts("s_sctx:mallocing");
+        puts("s_sctx: mallocing");
         ctx->stack = malloc(stack_size);
+        printf("s_sctx: ctx->stack in %p", ctx->stack);
+        puts("");
         if(ctx->stack == 0) perror("malloc error");
     }
+    ctx->stack_size = stack_size;
     puts("s_sctx:copying stack");
 
     for(int i = 0; i < stack_size; i++){
@@ -201,7 +210,7 @@ void __sch_save_ctx(){
 
     //__EXIT;
     //进入调度器
-    printf("save_ctx jmp\n");
+    //åprintf("save_ctx jmp\n");
     __jmp_to_sch;
 
     return;
@@ -209,10 +218,25 @@ void __sch_save_ctx(){
 
 //恢复协程上下文 并运行
 void __sch_recover(__Context *ctx){
-    u8 *rsp = ctx->rbp - ctx->stack_size;
-    memcpy(rsp, ctx->stack, ctx->stack_size);
-    set_reg(rsp, rsp);
-    jmp(ctx->addr);
+    u8 *rsp = ctx->stack_base - ctx->stack_size;
+    printf("sch_recover: rsp:%p ctx->rbp:%p size:%lld", rsp, ctx->rbp, ctx->stack_size); puts("");
+    printf("sch_recover: ctx->stack in %p", ctx->stack); puts("");
+    for(int i = 0; i < ctx->stack_size; i++){
+        //printf("%d %d", i, ctx->stack_size); puts("");
+        rsp[i] = ctx->stack[i];
+    }
+    puts("sch_recover: stack recovery fin");
+    //memcpy(rsp, ctx->stack, ctx->stack_size);
+    //set_reg(rsp, rsp);
+    printf("sch_recover: jmp to %p", ctx->addr); puts("");
+    //jmp(ctx->addr);
+    __asm__ __volatile__ (
+        "movq %0, %%rsp\n\t"
+        //"movq %1, %%rbp\n\t"
+        "pushq %2\n\t"
+        "retq\n\t"
+        ::"r"(rsp), "r"(ctx->rbp), "r"(ctx->addr)
+    );
 }
 
 __Context *__ctx;

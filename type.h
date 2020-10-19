@@ -14,7 +14,7 @@ typedef struct __list_node {
 
 //flag第一位表示是否已经运行过
 typedef struct {
-    u8 *stack, *rbp;
+    u8 *stack, *stack_base, *rbp;
     u64 addr, stack_size, flag, id;
     __ListNode *node_ptr;
     u64 *args, arg_num;
