@@ -18,6 +18,13 @@ extern u64 main_rsp, main_rbp;
 
 __Scheduler __S_zerqaq;
 
+void prt_ready(){
+    __ListNode *h = __S_zerqaq.ready;
+    for(__ListNode *t = h->next; t != h; t = t->next){
+        printf("%d->", t->val);
+    }
+}
+
 void __sch_init(){
     __S_zerqaq.routinue_num = 0;
     __S_zerqaq.routinue_cap = init_routinue_num;
@@ -32,16 +39,23 @@ void __sch_init(){
     __S_zerqaq.routinue_stack = malloc(routinue_stack_size);
     if(__S_zerqaq.routinue_stack == 0x0) perror("malloc error");
     __S_zerqaq.routinue_s_base = ((u64)(__S_zerqaq.routinue_stack +  routinue_stack_size) & 0xfffffffffffff000UL) - 0x2000;
+
+    __S_zerqaq.sch_stack = malloc(scheduler_stack_size);
+    if(__S_zerqaq.sch_stack == 0x0) perror("malloc error");
+    __S_zerqaq.sch_s_base = ((u64)(__S_zerqaq.sch_stack +  scheduler_stack_size) & 0xfffffffffffff000UL) - 0x2000;
     
     u64 temp1 = (u64)__S_zerqaq.routinue_stack;
     u64 temp2 = temp1 + routinue_stack_size;
-    printf("stack is between %llx ~ %llx", temp1, temp2);
+    printf("stack is between %llx ~ %llx\n", temp1, temp2);
+    temp1 = (u64)__S_zerqaq.sch_stack;
+    temp2 = temp1 + scheduler_stack_size;
+    printf("sch_stack is between %llx ~ %llx\nsch_base: %p\n", temp1, temp2, __S_zerqaq.sch_s_base);
     puts("");
 }
 
-#define __go(...) var_args_func(__go_raw, __VA_ARGS__)
+#define __go(func_name, ...) var_args_func(__go_raw, func_name, #func_name, ##__VA_ARGS__)
 
-__Context* __go_raw(u64 arg_num, void* func_ptr, ...){
+__Context* __go_raw(u64 arg_num, void* func_ptr, const char* func_name, ...){
     //新建上下文
     __Context *c = malloc(sizeof(__Context));
     __S_zerqaq.routinue_ctxs[++__S_zerqaq.routinue_num] = c;
@@ -59,8 +73,9 @@ __Context* __go_raw(u64 arg_num, void* func_ptr, ...){
     c->stack = NULL;
     c->flag = 0;
     c->stack_base = NULL;
+    c->func_name = func_name;
 
-    c->arg_num = arg_num - 1;
+    c->arg_num = arg_num - 2;
     if(c->arg_num > 0) c->args = malloc(c->arg_num * sizeof(u64));
     else c->args = NULL;
 
@@ -88,7 +103,7 @@ void __sch_start(__Context *ctx){
 
     //保存栈底
     ctx->stack_base = rsp;
-    printf("in sch_start: bef_p_arg_rsp:%llx\n", rsp);
+    //printf("in sch_start: bef_p_arg_rsp:%llx\n", rsp);
 
     //恢复参数上下文，六个以上的参数放在栈中
     if(ctx->arg_num > 6){
@@ -98,7 +113,7 @@ void __sch_start(__Context *ctx){
     }
     *(--rsp) = __sch_recy;
 
-    printf("in sch_start: aft_p_arg_rsp:%llx\n", rsp);
+    //printf("in sch_start: aft_p_arg_rsp:%llx\n", rsp);
 
 #define __ck_st_arg_asm(imm, next_imm, ind, reg)\
     "__CEK_ARG" #imm ": cmpq $" #imm ", %%rax\n\t"\
@@ -130,120 +145,127 @@ void __sch_start(__Context *ctx){
 
 #define __jmp_to_sch\
     __asm__ __volatile__(\
+        "movq %1, %%rsp\n\t"\
         "pushq %0\n\t"\
         "ret"\
-        ::"r"(__sch_scheduler)\
+        ::"r"(__sch_scheduler), "r"(__S_zerqaq.sch_s_base)\
     );
 
-void __sch_recover(__Context *ctx);
+void __sch_recover();
+
+typedef struct {
+    __Context *ctx;
+    u8 *rsp;
+    u64 i;
+} __sch_recv_ctx;
+__sch_recv_ctx __r_ctx;
 
 void __sch_scheduler(){
     //printf("%d\n", list_is_empty(__S_zerqaq.ready));
     //检查链表是否为空
-    /* if (list_is_empty(__S_zerqaq.ready)){
+    if (list_is_empty(__S_zerqaq.ready)){
         if(list_is_empty(__S_zerqaq.waiting)){
             printf("program end.\n");
         } else{
             printf("dead lock!\n");
         }
         __EXIT;
-    } */
+    }
 
     //取ready队列中的第一个协程运行
     __ListNode *node = __S_zerqaq.ready->next;
-    if(node->val != 1) {printf("sch:bad node memory\n"); puts(""); __EXIT}
+    //if(node->val != 1) {printf("sch:bad node memory\n"); puts(""); __EXIT}
 
     __Context *ctx = __S_zerqaq.routinue_ctxs[node->val];
-    if(ctx->id != 1) {printf("sch:bad ctx memory\n"); puts(""); __EXIT}
+    //if(ctx->id != 1) {printf("sch:bad ctx memory\n"); puts(""); __EXIT}
     
-    __S_zerqaq.running = node->val;
-    //list_del(node);
-    //printf("%d\n", list_is_empty(__S_zerqaq.ready));
-    puts("sch: recover or start jmp");
-    if (ctx->flag & 1) __sch_recover(ctx);
-    else __sch_start(ctx);
+    __S_zerqaq.running = ctx;
+    list_del(node);
+    printf("sch: jmp back to routinue %d(%s)", ctx->id, ctx->func_name); puts("");
+    if (ctx->flag & 1) {
+        __sch_recover(ctx);
+    }
+    else {
+        __sch_start(ctx);
+    }
 }
 
-//保存协程上下文
 void __sch_save_ctx(){
-    //保存栈
-    __Context *ctx = __S_zerqaq.routinue_ctxs[__S_zerqaq.running];
-    u8 *rsp; get_reg(rsp, rsp);
-    get_reg(rbp, ctx->rbp);
-    u64 stack_size = ctx->stack_base - rsp;
+    __asm__ __volatile__ (
+        "movq %%rbx, 32(%0)\n\t"
+        "movq %0, %%rbx\n\t"
+        "movq %%r12, (%%rbx)\n\t"
+        "movq %%r13, 8(%%rbx)\n\t"
+        "movq %%r14, 16(%%rbx)\n\t"
+        "movq %%r15, 24(%%rbx)\n\t"
+        ::"a"(__S_zerqaq.running->reg)
+        :"r12", "r13", "r14", "r15", "rbx"
+    );
+    __Context *ctx = __S_zerqaq.running;
+    u64 *rbp;
+    get_reg(rbp, rbp);
+    ctx->reg[6] = *rbp;
+    ctx->reg[5] = (u64)(rbp + 2);
+    ctx->addr = *(rbp + 1);
 
-    puts("in s_sctx:");
-    printf("rsp:%p ctx->rbp:%p size: %llx\n", rsp, ctx->stack_base, stack_size);
-    if(ctx->stack_size < stack_size){
-        if(ctx->stack_size != 0) free(ctx->stack);
-        puts("s_sctx: mallocing");
+    u64 stack_size = ctx->stack_base - ctx->reg[5];
+    if(stack_size > ctx->stack_size){
+        if(ctx->stack_size > 0) free(ctx->stack);
         ctx->stack = malloc(stack_size);
-        printf("s_sctx: ctx->stack in %p", ctx->stack);
-        puts("");
-        if(ctx->stack == 0) perror("malloc error");
     }
     ctx->stack_size = stack_size;
-    puts("s_sctx:copying stack");
+    u8 *rsp = ctx->reg[5];
+    //printf("rsp: %llx crsp: %llx\n", ctx->reg[5], ctx->stack_base - ctx->stack_size);
+    for(int i = 0; i < ctx->stack_size; i++) ctx->stack[i] = rsp[i];
 
-    for(int i = 0; i < stack_size; i++){
-        //printf("%x ", *(rsp + i));
-        ctx->stack[i] = rsp[i];
-    } //putchar('\n'); 
+    list_add(__S_zerqaq.ready, ctx->node_ptr);
 
-    //memcpy(ctx->stack, rsp, ctx->stack_size);
+    /* if(ctx->id == 2){
+    puts(""); puts("in ctx_save:");
+    printf("func: %s\n", ctx->func_name);
+    puts("reg:");
+    for(int i = 0; i < 7; i++){
+        printf("%llx ", ctx->reg[i]);
+    } puts("");
+    printf("addr: %llx\n", ctx->addr);
+    printf("stack(%lld):\n", ctx->stack_size);
+    for(int i = 0; i < ctx->stack_size; i++){
+        if(i % 4 == 0) putchar(' ');
+        printf("%02x", ctx->stack[i]);
+    } puts("");
+    } */
 
-    for(int i = 0; i < stack_size; i++) {
-        printf("%x ", ctx->stack[i]);
-    }
-    puts("");
-
-    //把协程切换到到调度器的等待队列 TODO:改成waiting
-    //__ListNode *node = ctx->node_ptr;
-    //list_add(__S_zerqaq.ready, node);
-
-    //保存指向return的地址
-    __asm__ __volatile__ (
-        "leaq (%%rip), %0\n\t"
-        "addq $17, %0\n\t"
-        :"=r"(ctx->addr)
-    );
-
-    //__EXIT;
-    //进入调度器
-    //åprintf("save_ctx jmp\n");
     __jmp_to_sch;
-
-    return;
 }
 
-//恢复协程上下文 并运行
 void __sch_recover(__Context *ctx){
-    u8 *rsp = ctx->stack_base - ctx->stack_size;
-    printf("sch_recover: rsp:%p ctx->rbp:%p size:%lld", rsp, ctx->rbp, ctx->stack_size); puts("");
-    printf("sch_recover: ctx->stack in %p", ctx->stack); puts("");
+    //恢复栈
+
+    u8 *rsp = ctx->reg[5];
     for(int i = 0; i < ctx->stack_size; i++){
-        //printf("%d %d", i, ctx->stack_size); puts("");
         rsp[i] = ctx->stack[i];
     }
-    puts("sch_recover: stack recovery fin");
-    //memcpy(rsp, ctx->stack, ctx->stack_size);
-    //set_reg(rsp, rsp);
-    printf("sch_recover: jmp to %p", ctx->addr); puts("");
-    //jmp(ctx->addr);
+    //恢复寄存器
     __asm__ __volatile__ (
-        "movq %0, %%rsp\n\t"
-        //"movq %1, %%rbp\n\t"
-        "pushq %2\n\t"
+        "movq %0, %%rbx\n\t"
+        "movq (%%rbx), %%r12\n\t"
+        "movq 8(%%rbx), %%r13\n\t"
+        "movq 16(%%rbx), %%r14\n\t"
+        "movq 24(%%rbx), %%r15\n\t"
+        "movq 40(%%rbx), %%rsp\n\t"
+        "movq 48(%%rbx), %%rbp\n\t"
+        "movq 32(%0), %%rbx\n\t"
+        "pushq %%rdx\n\t"
         "retq\n\t"
-        ::"r"(rsp), "r"(ctx->rbp), "r"(ctx->addr)
+        ::"a"(ctx->reg), "d"(ctx->addr)
+        :"r12", "r13", "r14", "r15", "rbx"
     );
 }
 
 __Context *__ctx;
 void __sch_recy(){
-    __ctx = __S_zerqaq.routinue_ctxs[__S_zerqaq.running];
-    printf("\nroutinue %lld is end.\n", __ctx->id);
-    __EXIT
+    __ctx = __S_zerqaq.running;
+    printf("routinue %lld(%s) is end.\n", __ctx->id, __ctx->func_name);
     set_reg(rsp, main_rsp);
     set_reg(rbp, main_rbp);
     __free_context(__ctx);

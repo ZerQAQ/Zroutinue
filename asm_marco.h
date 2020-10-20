@@ -17,15 +17,7 @@
         "movq %%"\
         #reg\
         " , %0"\
-        :"=r"(des)\
-        ::"memory"\
-    );
-
-#define get_rsp(des)\
-    __asm__ __volatile__(\
-        "movq %%rsp, %0"\
-        :"=r"(des)\
-        ::"memory"\
+        :"=m"(des)\
     );
 
 #define set_reg(reg, val)\
@@ -58,7 +50,7 @@
 #define get_rip(des)\
     __asm__ __volatile__ (\
         "leaq (%%rip), %0\n\t"\
-        :"=r"(des)\
+        :"=m"(des)\
     );
 
 #endif

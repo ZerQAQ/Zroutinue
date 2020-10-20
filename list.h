@@ -25,6 +25,12 @@ void list_del(__ListNode *node){
     node->next->prev = node->prev;
 }
 
+void list_del_free(__ListNode *node){
+    node->prev->next = node->next;
+    node->next->prev = node->prev;
+    free(node);
+}
+
 #define list_head(o)\
     (o->next)
 

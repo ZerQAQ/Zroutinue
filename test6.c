@@ -4,6 +4,7 @@
 u64 main_rsp, main_rbp;
 
 #include "scheduler.c"
+#include "channel.c"
 
 #include <stdio.h>
 
@@ -39,17 +40,37 @@ void test(u32* a1, u32 a2, u16 a3,u32 a4, u32* a5, u16 a6, u16 a7, u16 a8, u16* 
 
 u64 temp;
 
-void producer(){
+#define prt_stack(func_name)\
+    get_reg(rbp, rbp);\
+    get_reg(rsp, rsp);\
+    printf("%s:\n", #func_name);\
+    printf("rsp:%p rbp:%p size: %lld\n", rsp, rbp, rbp - rsp);\
+    for(__i = 0; __i < (rbp - rsp); __i++){\
+        if(__i % 4 == 0) putchar(' ');\ 
+        printf("%02x", *(rsp + __i));\
+    } putchar('\n'); \
+
+
+u8 *rsp, *rbp;
+u64 __i;
+
+int count(double val){
+    __sch_save_ctx();
+    return (int)val + 10;
+}
+
+void producer(int i){
+    int val = 10 * i;
     for(int i = 0; i < 10; i++){
-        temp = i;
-        printf("%d is produced\n", i);
-        __sch_save_ctx();
+        temp = val;
+        printf("%d is produced\n", temp);
+        val = count((double)val);
     }
 }
 
 void consumer(){
     for(int i = 0; i < 10; i++){
-        printf("%d is consumed\n", i);
+        printf("%d is consumed\n", temp);
         __sch_save_ctx();
     }
 }
@@ -60,17 +81,17 @@ void entry(){
     get_reg(rbp, rbp);
     get_reg(rsp, rsp);
 
-    puts("entry:");
+    /*puts("entry:");
     printf("rsp:%p rbp:%p\n", rsp, rbp);
     for(u64 i = 0; i < (rbp - rsp); i++){
         printf("%x ", *(rsp + i));
-    } putchar('\n');
+    } putchar('\n'); */
 
     printf("hello!\n");
-
+    __go(producer, 10);
+    __go(consumer);
     __sch_save_ctx();
     printf("hello!\n");
-    //__sch_save_ctx();
 }
 
 int main(){

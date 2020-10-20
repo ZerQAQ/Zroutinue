@@ -1,5 +1,5 @@
 #include "type.h"
-#include "channel.h"
+#include "channel.c"
 #include "list.h"
 #include <stdio.h>
 
@@ -8,7 +8,7 @@ typedef struct {
 } T;
 
 int main(){
-    __Channel ch = mkch(T, 10);
+    Channel ch = mkch(T, 10);
     for(int i = 0; i < 5; i++){
         T v; v.val = i;
         channel_write(ch, v);
