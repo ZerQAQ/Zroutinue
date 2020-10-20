@@ -8,7 +8,7 @@ typedef unsigned int u32;
 typedef unsigned long long u64;
 
 typedef struct __list_node {
-    u64 val;
+    void* val;
     struct __list_node *next, *prev;
 } __ListNode;
 
@@ -31,7 +31,7 @@ typedef struct {
 typedef struct{
     u64 routinue_num, routinue_cap;
     __Context **routinue_ctxs, *running;
-    __ListNode *ready, *waiting;
+    __ListNode *ready, *waiting, *free_list;
 
     u8 *routinue_stack, *routinue_s_base;
     u8 *sch_stack, *sch_s_base;

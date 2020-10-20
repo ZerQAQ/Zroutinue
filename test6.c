@@ -59,19 +59,18 @@ int count(double val){
     return (int)val + 10;
 }
 
-void producer(int i){
-    int val = 10 * i;
+void producer(Channel ch){
     for(int i = 0; i < 10; i++){
-        temp = val;
-        printf("%d is produced\n", temp);
-        val = count((double)val);
+        printf("%d is produced\n", i);
+        chwrite(ch, i);
     }
 }
 
-void consumer(){
+void consumer(Channel ch){
     for(int i = 0; i < 10; i++){
+        int temp;
+        chread(ch, temp);
         printf("%d is consumed\n", temp);
-        __sch_save_ctx();
     }
 }
 
@@ -88,8 +87,9 @@ void entry(){
     } putchar('\n'); */
 
     printf("hello!\n");
-    __go(producer, 10);
-    __go(consumer);
+    Channel ch = mkch(int);
+    __go(producer, ch);
+    __go(consumer, ch);
     __sch_save_ctx();
     printf("hello!\n");
 }

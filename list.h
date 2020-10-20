@@ -2,6 +2,7 @@
 #define __LIST_H
 
 #include "type.h"
+#include <stdlib.h>
 
 #define list_init(o)\
     o = (__ListNode*) malloc(sizeof(__ListNode));\

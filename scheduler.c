@@ -8,8 +8,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
-extern u64 main_rsp, main_rbp;
+u64 main_rsp, main_rbp;
 
 #define __EXIT\
     set_reg(rsp, main_rsp);\
@@ -44,6 +45,7 @@ void __sch_init(){
     if(__S_zerqaq.sch_stack == 0x0) perror("malloc error");
     __S_zerqaq.sch_s_base = ((u64)(__S_zerqaq.sch_stack +  scheduler_stack_size) & 0xfffffffffffff000UL) - 0x2000;
     
+#ifdef __Z_DEBUG
     u64 temp1 = (u64)__S_zerqaq.routinue_stack;
     u64 temp2 = temp1 + routinue_stack_size;
     printf("stack is between %llx ~ %llx\n", temp1, temp2);
@@ -51,6 +53,7 @@ void __sch_init(){
     temp2 = temp1 + scheduler_stack_size;
     printf("sch_stack is between %llx ~ %llx\nsch_base: %p\n", temp1, temp2, __S_zerqaq.sch_s_base);
     puts("");
+#endif
 }
 
 #define __go(func_name, ...) var_args_func(__go_raw, func_name, #func_name, ##__VA_ARGS__)
@@ -58,11 +61,11 @@ void __sch_init(){
 __Context* __go_raw(u64 arg_num, void* func_ptr, const char* func_name, ...){
     //新建上下文
     __Context *c = malloc(sizeof(__Context));
-    __S_zerqaq.routinue_ctxs[++__S_zerqaq.routinue_num] = c;
+    __S_zerqaq.routinue_num++;
 
     //新建链表节点，放入ready队列
     __ListNode *node = malloc(sizeof(__ListNode));
-    node->val = __S_zerqaq.routinue_num;
+    node->val = c;
     list_add(__S_zerqaq.ready, node);
 
     //初始化上下文
@@ -83,6 +86,10 @@ __Context* __go_raw(u64 arg_num, void* func_ptr, const char* func_name, ...){
     va_start(vl, func_ptr);
     for(int i = 0; i < c->arg_num; i++) c->args[i] = va_arg(vl, u64);
     va_end(vl);
+
+#ifdef __Z_DEBUG
+    printf("routinue %d(%s) is asign\n", c->id, c->func_name);
+#endif
 
     return c;
 }
@@ -163,6 +170,7 @@ __sch_recv_ctx __r_ctx;
 void __sch_scheduler(){
     //printf("%d\n", list_is_empty(__S_zerqaq.ready));
     //检查链表是否为空
+    //sleep(1);
     if (list_is_empty(__S_zerqaq.ready)){
         if(list_is_empty(__S_zerqaq.waiting)){
             printf("program end.\n");
@@ -176,12 +184,14 @@ void __sch_scheduler(){
     __ListNode *node = __S_zerqaq.ready->next;
     //if(node->val != 1) {printf("sch:bad node memory\n"); puts(""); __EXIT}
 
-    __Context *ctx = __S_zerqaq.routinue_ctxs[node->val];
+    __Context *ctx = node->val;
     //if(ctx->id != 1) {printf("sch:bad ctx memory\n"); puts(""); __EXIT}
     
     __S_zerqaq.running = ctx;
     list_del(node);
-    printf("sch: jmp back to routinue %d(%s)", ctx->id, ctx->func_name); puts("");
+#ifdef __Z_DEBUG
+    printf("routinue %d(%s) run", ctx->id, ctx->func_name); puts("");
+#endif
     if (ctx->flag & 1) {
         __sch_recover(ctx);
     }
@@ -218,7 +228,11 @@ void __sch_save_ctx(){
     //printf("rsp: %llx crsp: %llx\n", ctx->reg[5], ctx->stack_base - ctx->stack_size);
     for(int i = 0; i < ctx->stack_size; i++) ctx->stack[i] = rsp[i];
 
-    list_add(__S_zerqaq.ready, ctx->node_ptr);
+    list_add(__S_zerqaq.waiting, ctx->node_ptr);
+
+#ifdef __Z_DEBUG
+    printf("routinue %d(%s) is sleep\n", ctx->id, ctx->func_name);
+#endif
 
     /* if(ctx->id == 2){
     puts(""); puts("in ctx_save:");
@@ -265,7 +279,15 @@ void __sch_recover(__Context *ctx){
 __Context *__ctx;
 void __sch_recy(){
     __ctx = __S_zerqaq.running;
+#ifdef __Z_DEBUG
     printf("routinue %lld(%s) is end.\n", __ctx->id, __ctx->func_name);
+#endif
+    if(__ctx->id == 1) {
+#ifdef __Z_DEBUG
+        printf("main exit, program end.\n");
+#endif
+        __EXIT
+    }
     set_reg(rsp, main_rsp);
     set_reg(rbp, main_rbp);
     __free_context(__ctx);
