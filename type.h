@@ -30,7 +30,7 @@ typedef struct {
 
 typedef struct{
     u64 routinue_num, routinue_cap;
-    __Context **routinue_ctxs, *running;
+    __Context *running;
     __ListNode *ready, *waiting, *free_list;
 
     u8 *routinue_stack, *routinue_s_base;
@@ -39,7 +39,7 @@ typedef struct{
 
 typedef struct{
     u64 data_size, len, cap, head, tail;
-    u64 closed;
+    u64 flag;
     u8 *data;
     __ListNode *w_read, *w_write;
 } __Channel;
