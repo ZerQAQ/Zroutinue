@@ -5,6 +5,10 @@
 #include "var_arg.h"
 #include "scheduler.h"
 
+//#include "type.h"
+#include <stdio.h>
+#include <string.h>
+
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
@@ -32,7 +36,7 @@ void __channel_await_read(__Channel *ch);
 
 int __channel_w_write_not_empty(__Channel *ch);
 
-int __channel_await_write(__Channel *ch);
+void __channel_await_write(__Channel *ch);
 
 void __channel_free(__Channel *ch);
 
@@ -100,7 +104,7 @@ void __channel_free(__Channel *ch);
                 __channel_read((c), des);\
             } else {\
                 __channel_read((c), des);\
-            }\   
+            }\
         } else {_panic("Channel: you are trying to read a closed channel");}\
     }
 

@@ -1,6 +1,9 @@
 #include "scheduler.h"
 #include "channel.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #define __Z_DEBUG 1
 
 void _generator(Channel ch){

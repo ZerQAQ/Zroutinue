@@ -9,6 +9,8 @@
 #include <string.h>
 #include <time.h>
 
+//#define __Z_DEBUG
+
 u64 __main_rsp, __main_rbp;
 
 __Scheduler __S_zerqaq;
@@ -261,6 +263,7 @@ void __sch_recover(__Context *ctx){
 }
 
 __Context *__ctx;
+__ListNode *__temp;
 void __sch_recy(){
     __ctx = __S_zerqaq.running;
 #ifdef __Z_DEBUG
@@ -275,14 +278,12 @@ void __sch_recy(){
     set_reg(rsp, __main_rsp);
     set_reg(rbp, __main_rbp);
     __free_context(__ctx);
-    __ListNode *t;
-    for(t = __S_zerqaq.free_list->next; t != __S_zerqaq.free_list; t = t->next){
-        free(t->val);
-    }
     while(__S_zerqaq.free_list->next != __S_zerqaq.free_list){
-        t = __S_zerqaq.free_list->next;
-        list_del(t);
-        free(t);
+        //printf("in free list:");
+        __temp = __S_zerqaq.free_list->next;
+        list_del(__temp);
+        free(__temp->val);
+        free(__temp);
     }
     __jmp_to_sch;
 }

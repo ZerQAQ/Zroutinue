@@ -24,7 +24,7 @@ extern void set_routinue_stack_size(unsigned long long);
 
 extern void __sch_save_ctx();
 
-extern void __go_raw(unsigned long long, void*, const char*, ...);
+void __go_raw(unsigned long long arg_num, void* func_ptr, const char* func_name, ...);
 
 extern void __sch_scheduler();
 
