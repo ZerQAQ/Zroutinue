@@ -224,3 +224,15 @@ printf("%d\n", chok(ch)); //1
 chclose(ch);
 printf("%d\n", chok(ch)); //0
 ```
+
+# 性能
+
+在我的计算机上完成100万个协程的创建和销毁只使用了0.6秒，测试源码见example2.c
+```
+$ time ./example2 1000000
+1234
+
+real    0m0.669s
+user    0m0.375s
+sys     0m0.313s
+```
