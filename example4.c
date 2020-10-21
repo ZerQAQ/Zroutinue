@@ -1,4 +1,4 @@
-#include "Zroutinue.h"
+#include "src/Zroutinue.h"
 
 void unsafe_1(){
     Channel ch = mkch(double);
@@ -13,10 +13,10 @@ void unsafe_2(){
 
 void entry(){
     unsafe_1();
-    //output: in file example4.c line 6: Channel: you are trying to write to a closed channel
+    //output: example4.c:6: Channel: you are trying to write to a closed channel
 
     unsafe_2();
-    //output: in file example4.c line 10: Channel: you are trying to write a wrong type to channel.
+    //output: example4.c:10: Channel: you are trying to write a wrong type to channel
 }
 
 int main(){

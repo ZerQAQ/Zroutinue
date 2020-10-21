@@ -1,6 +1,7 @@
-#include "Zroutinue.h"
+#include "src/Zroutinue.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 void _f(Channel ch_in, Channel ch_out){
     int temp;

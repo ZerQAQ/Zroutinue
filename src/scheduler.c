@@ -15,7 +15,7 @@ u64 __main_rsp, __main_rbp;
 
 __Scheduler __S_zerqaq;
 
-u64 scheduler_stack_size = (1 << 14); //8KB
+u64 scheduler_stack_size = (1 << 14); //16KB
 u64 routinue_stack_size = (1 << 20); //1MB
 
 void set_routinue_stack_size(u64 val){
@@ -29,7 +29,7 @@ void __EXIT(){
 }
 
 void __panic(const char* msg, const char* file, u64 line){
-    fprintf(stderr, "in file %s line %d: %s\n", file, line, msg);
+    fprintf(stderr, "\033[1m%s:%d:\033[0m %s\n", file, line, msg);
     __EXIT();
 }
 

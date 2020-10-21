@@ -1,13 +1,14 @@
-#include "Zroutinue.h"
+#include "src/Zroutinue.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 typedef struct rectangle{
     double width, length;
 } Rect;
 
-//生产者，不断生产随机矩形放入channel中
+//生产者，生产10个随机矩形放入channel中
 void producer(Channel ch){
     Rect val;
     for(int i = 0; i < 10; i++){
