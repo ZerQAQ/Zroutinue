@@ -229,7 +229,7 @@ void __sch_save_ctx(){
     }
     ctx->stack_size = stack_size;
     u8 *rsp = ctx->reg[5];
-    for(int i = 0; i < ctx->stack_size; i++) ctx->stack[i] = rsp[i];
+    for(int i = 0; i < (ctx->stack_size - 1) / 8 + 1; i++) ((u64*)ctx->stack)[i] = ((u64*)rsp)[i];
 
     list_add(__S_zerqaq.waiting, ctx->node_ptr);
 
@@ -242,8 +242,8 @@ void __sch_save_ctx(){
 void __sch_recover(__Context *ctx){
     //恢复栈
     u8 *rsp = ctx->reg[5];
-    for(int i = 0; i < ctx->stack_size; i++){
-        rsp[i] = ctx->stack[i];
+    for(int i = 0; i < (ctx->stack_size - 1) / 8 + 1; i++){
+        ((u64*)rsp)[i] = ((u64*)ctx->stack)[i];
     }
     //恢复寄存器
     __asm__ __volatile__ (

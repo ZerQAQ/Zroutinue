@@ -28,7 +28,6 @@ void entry(int n){
     printf("%x\n", temp);
     //output: 1234
 }
-//在笔者机器上仅用了0.1秒就完成了10万个协程的开启与创建
 
 int main(int argn, char **argv){
     if(argn < 2) {printf("need param, usage: %s <routinue_number>\n", argv[0]); return 0;}
