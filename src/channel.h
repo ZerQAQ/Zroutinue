@@ -65,7 +65,7 @@ void __channel_free(__Channel *ch);
 
 //只能在channel不满的时候使用
 #define __channel_write(c, src)\
-    if(sizeof(src) != (c)->data_size) {_panic("Channel: you are tring to write a wrong type to channel."); }\
+    if(sizeof(src) != (c)->data_size) {_panic("Channel: you are trying to write a wrong type to channel."); }\
     *((typeof(src)*)((c)->data) + (c)->tail) = src;\
     (c)->len++;\
     if(++(c)->tail == (c)->cap) (c)->tail = 0;\
@@ -73,7 +73,7 @@ void __channel_free(__Channel *ch);
 
 //只能在channel不为空的时候使用
 #define __channel_read(c, des)\
-    if(sizeof(des) != (c)->data_size) {_panic("Channel: you are tring use a wrong type to read from channel."); }\
+    if(sizeof(des) != (c)->data_size) {_panic("Channel: you are trying use a wrong type to read from channel."); }\
     memcpy(&des, ((c)->data + (c)->head * (c)->data_size), sizeof(des));\
     (c)->len--;\
     if(++(c)->head == (c)->cap) c->head = 0;\
@@ -81,8 +81,8 @@ void __channel_free(__Channel *ch);
 
 #define chwrite(c, src)\
     {\
-        if((((c)->flag) & 2) == 0) {_panic("Channel: you are trying to read an uninitialize channel\n"); }\
-        if(!chok(c)) {_panic("Channel: you are trying to write to a closed channel\n"); }\
+        if((((c)->flag) & 2) == 0) {_panic("Channel: you are trying to read an uninitialize channel"); }\
+        if(!chok(c)) {_panic("Channel: you are trying to write to a closed channel"); }\
         if(__channel_is_full(c)) {\
             while(__channel_is_full(c)){\
                 __channel_block_write(c);\

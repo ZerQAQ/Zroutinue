@@ -2,12 +2,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
 typedef struct rectangle{
     double width, length;
 } Rect;
 
+//生产者，不断生产随机矩形放入channel中
 void producer(Channel ch){
     Rect val;
     for(int i = 0; i < 10; i++){
@@ -19,10 +19,13 @@ void producer(Channel ch){
     chclose(ch);
 }
 
+//消费者，不断从channel中取出矩形，并计算他的面积
 void consumer(Channel ch, Channel end){
     for(;;){
         Rect val;
+        //如果ch被关闭
         if(!chok(ch)){
+            //向end写入一个1， 结束函数
             chwrite(end, 1);    
             return;
         }
@@ -33,16 +36,29 @@ void consumer(Channel ch, Channel end){
 
 void entry(){
     srand(clock());
+
+    //mkch是channel创建函数(make_channel)
+    //mkch(数据类型, channel缓冲区大小) 第二个参数可选，默认值为1 
     Channel ch = mkch(Rect), end = mkch(int);
+
+    //go可以开启一个协程
+    //go(函数名, 函数参数1, 函数参数2, ...)
     go(producer, ch);
     go(consumer, ch, end);
+
+    //当第一个协程被结束的时候，程序会自动结束，为了让produceer和consumer能够运行，enter阻塞在chread
     int temp;
     chread(end, temp);
+
+    //释放channel
     chfree(end);
     chfree(ch);
+
     return;
 }
 int main(){
+    //你可以设置协程的栈大小，默认值是1MB
+    set_routinue_stack_size(1 << 16); //设置为64KB
     Zroutinue_init(entry);
 }
 

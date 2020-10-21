@@ -1,10 +1,7 @@
-#include "scheduler.h"
-#include "channel.h"
+#include "Zroutinue.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-
-#define __Z_DEBUG 1
 
 void _generator(Channel ch){
     int val = 2;
@@ -37,6 +34,7 @@ Channel make_filter(Channel ch, int k){
     return ret;
 }
 
+//打印n个质数
 void prim_generator(int n){
     Channel gen = make_generator();
     int prim;
@@ -51,7 +49,6 @@ void prim_generator(int n){
 int main(int argn, char** argv){
     if(argn < 2) {printf("need param, usage: %s <prim_num>\n", argv[0]); return 0;}
     int val = atoi(argv[1]);
-    set_routinue_stack_size(1 << 16); //64KB 默认1MB
     Zroutinue_init(prim_generator, val);
 }
 
