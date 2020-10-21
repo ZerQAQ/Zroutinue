@@ -5,7 +5,7 @@
 目前暂时只支持x86-64下的linux和macos。
 
 一个简单的例子(example0.c)：
-```
+```C
 #include "src/Zroutinue.h"
 
 #include <stdio.h>
@@ -87,7 +87,7 @@ output:
 ```
 
 另一个有趣的例子(example1.c)：
-```
+```C
 #include "src/Zroutinue.h"
 
 #include <stdio.h>
@@ -154,7 +154,7 @@ output:
 
 你需要在main中使用Zroutinue_init来初始化调度器，并提供一个入口函数作为主协程。调度器初始化完毕后将运行它，当主协程结束后，程序将会退出。
 
-```
+```C
 void entry(int argn, char **argv){
     ...
 }
@@ -166,7 +166,7 @@ main(int argn, char **argv){
 #### go
 
 你可以用go来开启一个协程，目前函数参数只支持channel和基本类型。
-```
+```C
 go(函数名，函数参数1，函数参数2，...)
 ```
 
@@ -174,19 +174,19 @@ go(函数名，函数参数1，函数参数2，...)
 
 #### mkch
 你可以通过mkch来初始化一个channel，第一个参数是类型，第二个参数是channel的大小，第二个参数是可选的，默认值为1。
-```
+```C
 Channel ch1 = mkch(int), ch2 = mkch(double, 3);
 ```
 
 #### chfree
 channel的本质是一个指针，故使用完毕后需要使用chfree释放:
-```
+```C
 chfree(ch);
 ```
 
 #### chread、chwrite
 你可以通过chread或者chwrite来读写channel
-```
+```C
 Channel ch = mkch(int);
 chwrite(ch, 1);
 int temp;
@@ -195,30 +195,30 @@ printf("%d\n", temp);
 //输出1
 ```
 当你尝试读写类型大小不符的类型时，会报错并退出程序：
-```
+```C
 void unsafe(){
     Channel ch = mkch(int, 5);
     chwrite(ch, 1LU);
 }
 //当unsafe被执行时，输出
-example4.c:10: Channel: you are trying to write a wrong type to channel
+//example4.c:10: Channel: you are trying to write a wrong type to channel
 ```
 
 #### chclose
 chclose可以用于关闭一个channel，当一个channel被关闭时，读他将不会发生任何事，但尝试写时会报错并退出程序。
-```
+```C
 void unsafe(){
     Channel ch = mkch(double);
     chclose(ch);
     chwrite(ch, 1.0);
 }
 //当unsafe被执行时，输出
-example4.c:6: Channel: you are trying to write to a closed channel
+//example4.c:6: Channel: you are trying to write to a closed channel
 ```
 
 #### chok
 你可以通过chok来判断一个ch是否关闭，返回1代表未关闭，返回0代表关闭。
-```
+```C
 Channel ch = mkch(int);
 printf("%d\n", chok(ch)); //1
 chclose(ch);
