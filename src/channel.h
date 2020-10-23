@@ -81,7 +81,6 @@ void __channel_free(__Channel *ch);
 
 #define chwrite(c, src)\
     {\
-        if((((c)->flag) & 2) == 0) {_panic("Channel: you are trying to read an uninitialize channel"); }\
         if(!chok(c)) {_panic("Channel: you are trying to write to a closed channel"); }\
         if(__channel_is_full(c)) {\
             while(__channel_is_full(c)){\

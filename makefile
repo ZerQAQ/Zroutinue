@@ -3,10 +3,13 @@ CFLAGS=-Isrc -g
 AR=ar
 OUTPUT=libzr.a
 EXAM_DIR=example
-BIN_DAR=bin
+BIN_DIR=bin
 
 lib: obj
 	$(AR) -r lib/$(OUTPUT) o/scheduler.o o/channel.o o/list.o
+
+test: test.c
+	$(CC) test.c src/scheduler.c src/channel.c src/list.c -w -g -o test
 
 example: lib $(EXAM_DIR)/example0.c $(EXAM_DIR)/example1.c $(EXAM_DIR)/example2.c $(EXAM_DIR)/example3.c $(EXAM_DIR)/example4.c
 	$(CC) $(EXAM_DIR)/example0.c -Llib -lzr -o $(BIN_DIR)/example0 $(CFLAGS) 
