@@ -223,13 +223,18 @@ void __sch_save_ctx(){
     ctx->addr = *(rbp + 1);
 
     u64 stack_size = ctx->stack_base - ctx->reg[5];
+    stack_size = (stack_size - 1) / 8 + 1;
     if(stack_size > ctx->stack_size){
         if(ctx->stack_size > 0) free(ctx->stack);
-        ctx->stack = malloc(stack_size);
+        ctx->stack = malloc(stack_size * 8);
     }
     ctx->stack_size = stack_size;
     u8 *rsp = ctx->reg[5];
-    for(int i = 0; i < (ctx->stack_size - 1) / 8 + 1; i++) ((u64*)ctx->stack)[i] = ((u64*)rsp)[i];
+    __asm__ __volatile__ (
+        "rep movsq\n\t"
+        ::"c"(ctx->stack_size), "S"(rsp), "D"(ctx->stack)
+    );
+    //for(int i = 0; i < ctx->stack_size; i++) ((u64*)ctx->stack)[i] = ((u64*)rsp)[i];
 
     list_add(__S_zerqaq.waiting, ctx->node_ptr);
 
@@ -242,9 +247,11 @@ void __sch_save_ctx(){
 void __sch_recover(__Context *ctx){
     //恢复栈
     u8 *rsp = ctx->reg[5];
-    for(int i = 0; i < (ctx->stack_size - 1) / 8 + 1; i++){
-        ((u64*)rsp)[i] = ((u64*)ctx->stack)[i];
-    }
+    __asm__ __volatile__ (
+        "rep movsq\n\t"
+        ::"c"(ctx->stack_size), "D"(rsp), "S"(ctx->stack)
+    );
+    //for(int i = 0; i < ctx->stack_size; i++){((u64*)rsp)[i] = ((u64*)ctx->stack)[i];}
     //恢复寄存器
     __asm__ __volatile__ (
         "movq %0, %%rbx\n\t"
