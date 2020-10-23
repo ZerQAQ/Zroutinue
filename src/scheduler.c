@@ -120,8 +120,13 @@ void __sch_start(__Context *ctx){
     ctx->stack_base = rsp;
 
     //恢复参数上下文，六个以上的参数放在栈中
-    if(ctx->arg_num > 6){
-        for(int i = ctx->arg_num - 1; i >= 6; i--){
+#if defined(WIN64) || defined(_WIN64) || defined(__WIN64__)
+#define reg_arg_num 0
+#else
+#define reg_arg_num 6
+#endif
+    if(ctx->arg_num > reg_arg_num){
+        for(int i = ctx->arg_num - 1; i >= reg_arg_num; i--){
             *(--rsp) = ctx->args[i];
         }
     }
@@ -138,6 +143,13 @@ void __sch_start(__Context *ctx){
 // 其余的6个参数分别放在 rdi rsi rdx rcx r8 r9
     //set_reg(rsp, rsp);
     __asm__ __volatile__ (
+#if defined(WIN64) || defined(_WIN64) || defined(__WIN64__)
+        __ck_st_arg_asm(1, 2, 0, rcx)
+        __ck_st_arg_asm(2, 3, 8, rdx)
+        __ck_st_arg_asm(3, 4, 16, r8)
+        __ck_st_arg_asm(4, 5, 24, r9)
+        "__CEK_ARG5:\n\t"
+#else
         __ck_st_arg_asm(1, 2, 0, rdi)
         __ck_st_arg_asm(2, 3, 8, rsi)
         __ck_st_arg_asm(3, 4, 16, rdx)
@@ -145,6 +157,7 @@ void __sch_start(__Context *ctx){
         __ck_st_arg_asm(5, 6, 32, r8)
         __ck_st_arg_asm(6, 7, 40, r9)
         "__CEK_ARG7:\n\t"
+#endif
         "__SET_ARG_END:\n\t"
         //jmp到函数地址
         "movq %3, %%rsp\n\t"
@@ -152,7 +165,11 @@ void __sch_start(__Context *ctx){
         "retq\n\t"
         :
         :"a"(ctx->arg_num), "b"(ctx->args), "r"(ctx->addr), "r"(rsp)
+#if defined(WIN64) || defined(_WIN64) || defined(__WIN64__)
+        :"rcx", "rdx", "r8", "r9"
+#else
         :"rdi", "rsi", "rdx", "rcx", "r8", "r9"
+#endif
     );
 }
 
