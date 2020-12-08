@@ -152,14 +152,16 @@ output:
 
 ## 初始化
 
-你需要在main中使用Zroutinue_init来初始化调度器，并提供一个入口函数作为主协程。调度器初始化完毕后将运行它，当主协程结束后，程序将会退出。
+先引入Zroutinue.h,然后在main中使用Zroutinue_init来初始化调度器，并提供一个入口函数作为主协程。调度器初始化完毕后将运行它，当主协程结束后，程序将会退出。
 
 ```C
+#include "Zroutinue.h"
+
 void entry(int argn, char **argv){
     ...
 }
 
-main(int argn, char **argv){
+int main(int argn, char **argv){
     Zroutinue_init(entry, argn, argv)
 }
 ```
@@ -225,9 +227,14 @@ chclose(ch);
 printf("%d\n", chok(ch)); //0
 ```
 
+## 编译与连接
+
+通过执行 make lib 可以将Zroutinue编译成静态链接库
+随后在G++命令中加上-Llib -lzr来编译你写的程序
+
 # 性能
 
-在我的计算机上完成100万个协程的创建和销毁只使用了0.6秒，测试源码见example2.c
+在笔者的计算机(i58300H)上完成100万个协程的创建和销毁只使用了0.6秒，测试源码见example2.c
 ```
 $ time ./example2 1000000
 1234
