@@ -17,6 +17,7 @@ __Scheduler __S_zerqaq;
 
 u64 scheduler_stack_size = (1 << 14); //16KB
 u64 routinue_stack_size = (1 << 20); //1MB
+u64 free_list_max_size = (1 << 10); //1024
 
 void set_routinue_stack_size(u64 val){
     routinue_stack_size = val;
@@ -52,6 +53,7 @@ void __sch_init(){
     __S_zerqaq.sch_s_base = ((u64)(__S_zerqaq.sch_stack +  scheduler_stack_size) & 0xfffffffffffff000UL) - 0x2000;
     u64 rbp; get_reg(rbp, rbp); rbp += 8;
     __S_zerqaq.sch_s_base += rbp & 0xfff;
+    __S_zerqaq.free_list_size = 0;
     
 #ifdef __Z_DEBUG
     u64 temp1 = (u64)__S_zerqaq.routinue_stack;
@@ -77,6 +79,8 @@ void __go_raw(u64 arg_num, void* func_ptr, const char* func_name, ...){
     list_add(__S_zerqaq.ready, node);
 
     //初始化上下文
+    //保存函数指针、函数名、参数
+    //初始化标记、调度器节点
     c->node_ptr = node;
     c->id = __S_zerqaq.routinue_num;
     c->addr = func_ptr;
@@ -120,6 +124,7 @@ void __sch_start(__Context *ctx){
     ctx->stack_base = rsp;
 
     //恢复参数上下文，六个以上的参数放在栈中
+    //如果是WIN64，把参数全放在栈中
 #if defined(WIN64) || defined(_WIN64) || defined(__WIN64__)
 #define reg_arg_num 0
 #else
@@ -133,30 +138,26 @@ void __sch_start(__Context *ctx){
     *(--rsp) = __sch_recy;
 
 
-#define __ck_st_arg_asm(imm, next_imm, ind, reg)\
-    "__CEK_ARG" #imm ": cmpq $" #imm ", %%rax\n\t"\
-    "jae __SET_ARG" #imm "\n\t"\
-    "jmp __SET_ARG_END\n\t"\
-    "__SET_ARG" #imm ": movq " #ind "(%1), %%" #reg "\n\t"\
-    "jmp __CEK_ARG" #next_imm "\n\t"
+#define __ck_st_arg_asm(imm, ind, reg)\
+    "cmpq $" #imm ", %%rax\n\t"\
+    "jb __SET_ARG_END\n\t"\
+    "movq " #ind "(%1), %%" #reg "\n\t"\
 
 // 其余的6个参数分别放在 rdi rsi rdx rcx r8 r9
-    //set_reg(rsp, rsp);
+// 如果是WIN64 最开头的4个参数分别放在rcx rdx r8 r9
     __asm__ __volatile__ (
 #if defined(WIN64) || defined(_WIN64) || defined(__WIN64__)
-        __ck_st_arg_asm(1, 2, 0, rcx)
-        __ck_st_arg_asm(2, 3, 8, rdx)
-        __ck_st_arg_asm(3, 4, 16, r8)
-        __ck_st_arg_asm(4, 5, 24, r9)
-        "__CEK_ARG5:\n\t"
+        __ck_st_arg_asm(1, 0, rcx)
+        __ck_st_arg_asm(2, 8, rdx)
+        __ck_st_arg_asm(3, 16, r8)
+        __ck_st_arg_asm(4, 24, r9)
 #else
-        __ck_st_arg_asm(1, 2, 0, rdi)
-        __ck_st_arg_asm(2, 3, 8, rsi)
-        __ck_st_arg_asm(3, 4, 16, rdx)
-        __ck_st_arg_asm(4, 5, 24, rcx)
-        __ck_st_arg_asm(5, 6, 32, r8)
-        __ck_st_arg_asm(6, 7, 40, r9)
-        "__CEK_ARG7:\n\t"
+        __ck_st_arg_asm(1, 0, rdi)
+        __ck_st_arg_asm(2, 8, rsi)
+        __ck_st_arg_asm(3, 16, rdx)
+        __ck_st_arg_asm(4, 24, rcx)
+        __ck_st_arg_asm(5, 32, r8)
+        __ck_st_arg_asm(6, 40, r9)
 #endif
         "__SET_ARG_END:\n\t"
         //jmp到函数地址
@@ -191,6 +192,9 @@ typedef struct {
 __sch_recv_ctx __r_ctx;
 
 void __sch_scheduler(){
+    //检查free队列
+    if (__S_zerqaq.free_list_size > free_list_max_size) __clear_free_list();
+    
     //检查链表是否为空
     if (list_is_empty(__S_zerqaq.ready)){
         if(list_is_empty(__S_zerqaq.waiting)){
@@ -213,10 +217,13 @@ void __sch_scheduler(){
 #ifdef __Z_DEBUG
     printf("routinue %d(%s) run", ctx->id, ctx->func_name); puts("");
 #endif
+    //flag的第一位表示该routinue是否曾经被运行过
     if (ctx->flag & 1) {
+        //不是第一次运行的routinue
         __sch_recover(ctx);
     }
     else {
+        //第一次运行的routinue
         __sch_start(ctx);
     }
 }
@@ -280,6 +287,7 @@ void __sch_recover(__Context *ctx){
         "movq 48(%%rbx), %%rbp\n\t"
         "movq 32(%0), %%rbx\n\t"
         "pushq %%rdx\n\t"
+        //跳转到函数地址
         "retq\n\t"
         ::"a"(ctx->reg), "d"(ctx->addr)
         :"r12", "r13", "r14", "r15", "rbx"
@@ -288,6 +296,7 @@ void __sch_recover(__Context *ctx){
 
 __Context *__ctx;
 __ListNode *__temp;
+//  回收运行结束的协程
 void __sch_recy(){
     __ctx = __S_zerqaq.running;
 #ifdef __Z_DEBUG
@@ -302,6 +311,12 @@ void __sch_recy(){
     set_reg(rsp, __main_rsp);
     set_reg(rbp, __main_rbp);
     __free_context(__ctx);
+    __jmp_to_sch;
+}
+
+void __clear_free_list(){
+    set_reg(rsp, __main_rsp);
+    set_reg(rbp, __main_rbp);
     while(__S_zerqaq.free_list->next != __S_zerqaq.free_list){
         //printf("in free list:");
         __temp = __S_zerqaq.free_list->next;
@@ -309,5 +324,6 @@ void __sch_recy(){
         free(__temp->val);
         free(__temp);
     }
+    __S_zerqaq.free_list_size = 0;
     __jmp_to_sch;
 }

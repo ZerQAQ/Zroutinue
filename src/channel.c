@@ -57,13 +57,15 @@ void __channel_await_read(__Channel *ch){
     __Context *c = (__Context*)(((__ListNode*)ch->w_read->next->val)->val);
     printf("routinue %d(%s) is ready\n", c->id, c->func_name);
 #endif
+    //取出在读等待队列中第一个节点的数据，这个数据代表一个routinue
     list_del(ch->w_read->next->val);
+    //将他转移到调度器中的ready队列
     list_add(__S_zerqaq.ready, ch->w_read->next->val);
-    //放入free列表
+    //将读等待队列的第一个节点放入free列表
     __ListNode *t = malloc(sizeof(__ListNode));
     t->val = ch->w_read->next;
     list_add(__S_zerqaq.free_list, t);
-
+    __S_zerqaq.free_list_size ++;
     list_del(ch->w_read->next);
 }
 
@@ -76,12 +78,15 @@ void __channel_await_write(__Channel *ch){
     __Context *c = (__Context*)(((__ListNode*)ch->w_write->next->val)->val);
     printf("routinue %d(%s) ready\n", c->id, c->func_name);
 #endif
+    //取出在写等待队列中第一个节点的数据，这个数据代表一个routinue
     list_del(ch->w_write->next->val);
+    //将他转移到调度器中的ready队列
     list_add(__S_zerqaq.ready, ch->w_write->next->val);
-    //放入free列表
+    //将写等待队列中的第一个节点放入free列表
     __ListNode *t = malloc(sizeof(__ListNode));
     t->val = ch->w_write->next;
     list_add(__S_zerqaq.free_list, t);
+    __S_zerqaq.free_list_size ++;
 
     list_del(ch->w_write->next);
 }
@@ -91,4 +96,5 @@ void __channel_free(__Channel *ch){
     list_node_new(ch->data, temp2);
     list_add(__S_zerqaq.free_list, temp1);
     list_add(__S_zerqaq.free_list, temp2);
+    __S_zerqaq.free_list_size += 2;
 }

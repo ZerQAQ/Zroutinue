@@ -229,12 +229,17 @@ printf("%d\n", chok(ch)); //0
 
 ## 编译与连接
 
-通过执行 make lib 可以将Zroutinue编译成静态链接库
+将项目clone到本地后，在根目录新建o和lib两个文件夹
+
+然后执行 make lib 可以将Zroutinue编译成静态链接库
+
 随后在G++命令中加上-Llib -lzr来编译你写的程序
+
+在根目录下新建bin文件夹，执行make example可以编译所有的example
 
 # 性能
 
-在笔者的计算机(i58300H)上完成100万个协程的创建和销毁只使用了0.6秒，测试源码见example2.c
+在笔者的笔记本(i58300H)上完成100万个协程的创建和销毁只使用了0.6秒，测试源码见example2.c
 ```
 $ time ./example2 1000000
 1234

@@ -29,7 +29,7 @@ typedef struct {
     free(ctx);
 
 typedef struct{
-    u64 routinue_num, routinue_cap;
+    u64 routinue_num, routinue_cap, free_list_size;
     __Context *running;
     __ListNode *ready, *waiting, *free_list;
 
